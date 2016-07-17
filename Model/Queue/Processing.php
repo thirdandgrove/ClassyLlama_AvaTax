@@ -427,13 +427,31 @@ class Processing
 
         // save the ExtensionAttributes on the entity object
         if ($avataxIsUnbalancedToSave || $baseAvataxTaxAmountToSave) {
-            $entity->setExtensionAttributes($entityExtension);
+            if ($entity instanceof CreditmemoInterface) {
 
-            // get the repository for this entity type
-            $entityRepository = $this->getEntityRepository($entity);
+                // Prevent update of credit memo entities to prevent double
+                // refund totals on orders.
+                $invoice_id =
+                    ($entity->getInvoice()) ?
+                    $entity->getInvoice()->getIncrementId() :
+                    '';
 
-            // save the entity object using the repository
-            $entityRepository->save($entity);
+                $this->avaTaxLogger->warning(
+                    __('Skipping save of Credit Memo.'),
+                    [
+                        'credit_memo' => $entity->getIncrementId(),
+                        'invoice'     => $invoice_id,
+                    ]
+                );
+            } else {
+                $entity->setExtensionAttributes($entityExtension);
+
+                // get the repository for this entity type
+                $entityRepository = $this->getEntityRepository($entity);
+
+                // save the entity object using the repository
+                $entityRepository->save($entity);
+            }
         }
     }
 
